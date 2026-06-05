@@ -32,7 +32,7 @@ with a helpful hint.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set, TypedDict
+from typing import Any, Dict, FrozenSet, List, Optional, TypedDict
 
 from nemoguardrails import RailsConfig
 from nemoguardrails.actions import action
@@ -51,14 +51,18 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+# Module-level cache for ATREngine — the rule bundle is loaded once
+# per process lifetime.
+_cached_engine = None
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_SEVERITIES: Set[str] = {"critical", "high"}
+DEFAULT_SEVERITIES: FrozenSet[str] = frozenset({"critical", "high"})
 """Default severities that are blocked when no explicit list is configured."""
 
-VALID_SEVERITIES: Set[str] = {"critical", "high", "medium", "low"}
+VALID_SEVERITIES: FrozenSet[str] = frozenset({"critical", "high", "medium", "low"})
 """All valid ATR severity levels (lowercase)."""
 
 
@@ -147,6 +151,10 @@ def _validate_atr_config(config: RailsConfig) -> None:
         raise ValueError(msg)
 
     for sev in severities:
+        if not isinstance(sev, str):
+            msg = f"Invalid severity entry {sev!r} in atr_detection config: expected a string."
+            log.error(msg)
+            raise ValueError(msg)
         if sev.lower() not in VALID_SEVERITIES:
             msg = (
                 f"Invalid severity '{sev}' in atr_detection config. "
@@ -156,7 +164,7 @@ def _validate_atr_config(config: RailsConfig) -> None:
             raise ValueError(msg)
 
 
-def _extract_atr_config(config: RailsConfig) -> Set[str]:
+def _extract_atr_config(config: RailsConfig) -> FrozenSet[str]:
     """Extract the set of severity levels that should be flagged.
 
     Args:
@@ -167,12 +175,18 @@ def _extract_atr_config(config: RailsConfig) -> Set[str]:
         ``{"critical", "high"}`` when none are specified.
     """
     atr_config = _atr_config_raw(config)
+
+    # _validate_atr_config guarantees atr_config is not None at this point,
+    # but guard defensively for callers that bypass validation.
+    if atr_config is None:
+        return DEFAULT_SEVERITIES
+
     severities = _get_attr(atr_config, "severities", None)
 
     if severities is None:
-        return DEFAULT_SEVERITIES.copy()
+        return DEFAULT_SEVERITIES
 
-    return {s.lower() for s in severities}
+    return frozenset({s.lower() for s in severities})
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +258,9 @@ async def atr_detection(
     ``config.rails.config.atr_detection.severities`` and defaults to
     ``["critical", "high"]``.
 
+    The ``ATREngine`` instance is cached at module level so the rule
+    bundle is only loaded once per process lifetime.
+
     Args:
         text: The user message to evaluate.
         config: The rails configuration object.
@@ -258,12 +275,15 @@ async def atr_detection(
         ImportError: If ``pyatr`` is not installed.
         ValueError: If the configuration is missing or invalid.
     """
+    global _cached_engine
+
     _check_pyatr_available()
 
     _validate_atr_config(config)
 
     severities = _extract_atr_config(config)
 
-    engine = _ATREngine()
+    if _cached_engine is None:
+        _cached_engine = _ATREngine()
 
-    return _evaluate_atr(text, engine, severities)
+    return _evaluate_atr(text, _cached_engine, severities)

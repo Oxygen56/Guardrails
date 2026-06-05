@@ -12,5 +12,5 @@ define flow atr check input
       create event ATRDetectionRailException(message="Input blocked. The user message was flagged by the Agent Threat Rules (ATR) detection rail.")
       stop
     else
-      bot "I'm sorry, your message triggered the following agent threat rule(s): {{ response.detections | join(join_separator) }}. Please rephrase your request."
+      bot say "I'm sorry, your message triggered the following agent threat rule(s): {{ response.detections | join(join_separator) }}. Please rephrase your request."
       stop

@@ -263,6 +263,13 @@ except (ImportError, ModuleNotFoundError):
 class TestATRDetectionE2E:
     """End-to-end tests using ``TestChat`` with mocked ATR engine."""
 
+    @pytest.fixture(autouse=True)
+    def _reset_cache(self):
+        """Reset the module-level engine cache between tests."""
+        from nemoguardrails.library.atr import actions
+
+        actions._cached_engine = None
+
     def _build_config(self, yaml_extra: str = ""):
         return RailsConfig.from_content(
             yaml_content=f"""
@@ -281,8 +288,10 @@ class TestATRDetectionE2E:
     def test_clean_input_passes_through(self):
         config = self._build_config("severities: [critical, high]")
 
-        with patch("nemoguardrails.library.atr.actions._ATREngine") as mock_cls:
-            mock_cls.return_value.evaluate.return_value = []
+        with patch("nemoguardrails.library.atr.actions._ATREngine") as mock_eng,\
+             patch("nemoguardrails.library.atr.actions._AgentEvent") as mock_ae:
+            mock_eng.return_value.evaluate.return_value = []
+            mock_ae.return_value = MagicMock()
 
             chat = TestChat(
                 config,
@@ -293,10 +302,12 @@ class TestATRDetectionE2E:
     def test_threat_input_is_blocked(self):
         config = self._build_config("severities: [critical, high]")
 
-        with patch("nemoguardrails.library.atr.actions._ATREngine") as mock_cls:
-            mock_cls.return_value.evaluate.return_value = [
+        with patch("nemoguardrails.library.atr.actions._ATREngine") as mock_eng,\
+             patch("nemoguardrails.library.atr.actions._AgentEvent") as mock_ae:
+            mock_eng.return_value.evaluate.return_value = [
                 _make_match("ATR-2026-001", "critical", "Prompt injection"),
             ]
+            mock_ae.return_value = MagicMock()
 
             chat = TestChat(
                 config,
@@ -324,10 +335,12 @@ class TestATRDetectionE2E:
             colang_content="",
         )
 
-        with patch("nemoguardrails.library.atr.actions._ATREngine") as mock_cls:
-            mock_cls.return_value.evaluate.return_value = [
+        with patch("nemoguardrails.library.atr.actions._ATREngine") as mock_eng,\
+             patch("nemoguardrails.library.atr.actions._AgentEvent") as mock_ae:
+            mock_eng.return_value.evaluate.return_value = [
                 _make_match("ATR-2026-042", "high", "Jailbreak"),
             ]
+            mock_ae.return_value = MagicMock()
 
             chat = TestChat(
                 config,
