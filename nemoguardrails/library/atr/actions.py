@@ -32,7 +32,7 @@ with a helpful hint.
 """
 
 import logging
-from typing import Any, Dict, FrozenSet, List, Optional, TypedDict
+from typing import Any, Dict, FrozenSet, List, Optional, Set, TypedDict
 
 from nemoguardrails import RailsConfig
 from nemoguardrails.actions import action
