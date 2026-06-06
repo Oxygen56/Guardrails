@@ -1221,6 +1221,8 @@ class ContentSafetyConfig(BaseModel):
 class RailsConfigData(BaseModel):
     """Configuration data for specific rails that are supported out-of-the-box."""
 
+    model_config = ConfigDict(extra="allow")
+
     fact_checking: FactCheckingRailConfig = Field(
         default_factory=FactCheckingRailConfig,
         description="Configuration data for the fact-checking rail.",

@@ -32,7 +32,7 @@ with a helpful hint.
 """
 
 import logging
-from typing import Any, Dict, FrozenSet, List, Optional, Set, TypedDict
+from typing import Any, FrozenSet, List, Optional, Set, TypedDict
 
 from nemoguardrails import RailsConfig
 from nemoguardrails.actions import action
@@ -115,10 +115,7 @@ def _atr_config_raw(config: RailsConfig) -> Optional[Any]:
 def _check_pyatr_available() -> None:
     """Raise ``ImportError`` with an install hint when *pyatr* is absent."""
     if _ATREngine is None:
-        raise ImportError(
-            "The pyatr module is required for ATR detection. "
-            "Please install it using: pip install pyatr"
-        )
+        raise ImportError("The pyatr module is required for ATR detection. Please install it using: pip install pyatr")
 
 
 def _validate_atr_config(config: RailsConfig) -> None:
