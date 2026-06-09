@@ -37,6 +37,8 @@ from typing import Any, FrozenSet, List, Optional, Set, TypedDict
 from nemoguardrails import RailsConfig
 from nemoguardrails.actions import action
 
+log = logging.getLogger(__name__)
+
 # Lazy import — pyatr is an optional dependency.
 _pyatr_module = None
 _ATREngine = None
@@ -47,9 +49,13 @@ try:
     _ATREngine = _pyatr_module.ATREngine
     _AgentEvent = _pyatr_module.AgentEvent
 except ImportError:
-    pass
-
-log = logging.getLogger(__name__)
+    _pyatr_module = None
+except AttributeError:
+    log.warning(
+        "pyatr is installed but does not expose the expected API "
+        "(ATREngine, AgentEvent). ATR detection will be unavailable."
+    )
+    _pyatr_module = None
 
 # Module-level cache for ATREngine — the rule bundle is loaded once
 # per process lifetime.
